@@ -230,7 +230,7 @@ class VarnishHandler(Telnet):
             note  that the Host part of the URL is ignored, so if you have several virtual hosts all of them
             will be banned. Use ban to specify a complete ban if you need to narrow it down.
         """
-        return self.fetch('ban.url %s' % regex)[1]
+        return self.fetch('ban req.url ~ %s' % regex)[1]
 
     def ban_list(self):
         """

@@ -40,9 +40,10 @@ import logging
 
 
 logging.basicConfig(
-    level = logging.DEBUG,
-    format = '%(asctime)s %(levelname)s %(message)s',
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s',
 )
+
 
 def http_purge_url(url):
     """
@@ -52,11 +53,12 @@ def http_purge_url(url):
     url = urlparse(url)
     connection = HTTPConnection(url.hostname, url.port or 80)
     connection.request('PURGE', '%s?%s' % (url.path or '/', url.query), '',
-                      {'Host': url.hostname})
+                       {'Host': url.hostname})
     response = connection.getresponse()
     if response.status != 200:
         logging.error('Purge failed with status: %s' % response.status)
     return response
+
 
 class VarnishHandler(Telnet):
     def __init__(self, host_port_timeout, secret=None, **kwargs):
@@ -88,10 +90,13 @@ class VarnishHandler(Telnet):
                 break
         status, length = map(int, buffer.split())
         content = ''
-        assert status == 200, 'Bad response code: {status} {text} ({command})'.format(status=status, text=self.read_until('\n').strip(), command=command)
+        assert status == 200, 'Bad response code: {status} {text} ({command})'.format(status=status,
+                                                                                      text=self.read_until(
+                                                                                          '\n').strip(),
+                                                                                      command=command)
         while len(content) < length:
             content += self.read_until('\n')
-        logging.debug('RECV: %s: %dB %s' % (status,length,content[:30]))
+        logging.debug('RECV: %s: %dB %s' % (status, length, content[:30]))
         self.read_eager()
         return (status, length), content
 
@@ -225,7 +230,7 @@ class VarnishHandler(Telnet):
             note  that the Host part of the URL is ignored, so if you have several virtual hosts all of them
             will be banned. Use ban to specify a complete ban if you need to narrow it down.
         """
-        return self.fetch('ban.url %s' % regex)[1]
+        return self.fetch('ban req.url ~ %s' % regex)[1]
 
     def ban_list(self):
         """
@@ -266,6 +271,7 @@ class ThreadedRunner(Thread):
     """
     Runs commands on a particular varnish server in a separate thread
     """
+
     def __init__(self, addr, *commands, **kwargs):
         self.addr = addr
         self.commands = commands
@@ -275,11 +281,12 @@ class ThreadedRunner(Thread):
     def run(self):
         handler = VarnishHandler(self.addr, **self.kwargs)
         for cmd in self.commands:
-            if isinstance(cmd, tuple) and len(cmd)>1:
-                getattr(handler, cmd[0].replace('.','_'))(*cmd[1:])
+            if isinstance(cmd, tuple) and len(cmd) > 1:
+                getattr(handler, cmd[0].replace('.', '_'))(*cmd[1:])
             else:
-                getattr(handler, cmd.replace('.','_'))()
+                getattr(handler, cmd.replace('.', '_'))()
         handler.close()
+
 
 def run(addr, *commands, **kwargs):
     """
@@ -288,13 +295,14 @@ def run(addr, *commands, **kwargs):
     results = []
     handler = VarnishHandler(addr, **kwargs)
     for cmd in commands:
-        if isinstance(cmd, tuple) and len(cmd)>1:
-            results.extend([getattr(handler, c[0].replace('.','_'))(*c[1:]) for c in cmd])
+        if isinstance(cmd, tuple) and len(cmd) > 1:
+            results.extend([getattr(handler, c[0].replace('.', '_'))(*c[1:]) for c in cmd])
         else:
-            results.append(getattr(handler, cmd.replace('.','_'))(*commands[1:]))
+            results.append(getattr(handler, cmd.replace('.', '_'))(*commands[1:]))
             break
     handler.close()
     return results
+
 
 class VarnishManager(object):
     def __init__(self, servers):
@@ -307,13 +315,13 @@ class VarnishManager(object):
         for server in self.servers:
             if threaded:
                 [ThreadedRunner(server, *commands, **kwargs).start()
-                    for server in self.servers]
+                 for server in self.servers]
             else:
                 return [run(server, *commands, **kwargs)
-                            for server in self.servers]
+                        for server in self.servers]
 
     def help(self, *args):
-        return run(self.servers[0], *('help',)+args)[0]
+        return run(self.servers[0], *('help',) + args)[0]
 
     def close(self):
         self.run('close', threaded=True)
